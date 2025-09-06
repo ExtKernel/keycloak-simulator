@@ -6,7 +6,7 @@ from datetime import datetime
 
 class Logger:
     def __init__(self, filename):
-        # logs/date/filename.log
+        # logs/datetime/filename.log
         log_dir = f'logs/{datetime.today().strftime('%Y%m%d_%H%M%S')}'
         self.log = f'{log_dir}/{filename}.log'
         Path(log_dir).mkdir(parents=True, exist_ok=True)
