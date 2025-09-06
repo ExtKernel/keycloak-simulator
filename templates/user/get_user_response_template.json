@@ -1,0 +1,21 @@
+{
+    "id": "",
+    "username": "",
+    "firstName": "",
+    "lastName": "",
+    "email": "",
+    "emailVerified": true,
+    "enabled": false,
+    "createdTimestamp": 0,
+    "totp": false,
+    "disableableCredentialTypes": [],
+    "requiredActions": [],
+    "notBefore": 0,
+    "access": {
+        "manageGroupMembership": true,
+        "view": true,
+        "mapRoles": true,
+        "impersonate": true,
+        "manage": true
+    }
+}

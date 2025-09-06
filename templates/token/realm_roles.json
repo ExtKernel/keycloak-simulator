@@ -1,0 +1,42 @@
+{
+    "realm_access": {
+        "roles": [
+            "create-realm",
+            "default-roles-master",
+            "offline_access",
+            "admin",
+            "uma_authorization"
+        ]
+    },
+    "resource_access": {
+        "master-realm": {
+            "roles": [
+                "view-identity-providers",
+                "view-realm",
+                "manage-identity-providers",
+                "impersonation",
+                "create-client",
+                "manage-users",
+                "query-realms",
+                "view-authorization",
+                "query-clients",
+                "query-users",
+                "manage-events",
+                "manage-realm",
+                "view-events",
+                "view-users",
+                "view-clients",
+                "manage-authorization",
+                "manage-clients",
+                "query-groups"
+            ]
+        },
+        "account": {
+            "roles": [
+                "manage-account",
+                "manage-account-links",
+                "view-profile"
+            ]
+        }
+    }
+}

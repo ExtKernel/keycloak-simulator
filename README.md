@@ -3,4 +3,4 @@ A Keycloak Admin API simulator. Most suitable for simulating its behavior during
 
 ---
 ### Configuration
-For configuration hints please see [config doc](CONFIG.md)
+For configuration hints please see [config doc](CONFIG_DOC.md)

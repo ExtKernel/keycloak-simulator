@@ -1,0 +1,22 @@
+{
+    "exp": 0,
+    "iat": 0,
+    "jti": "onltro:",
+    "iss": "",
+    "aud": [
+        "master-realm",
+        "account"
+    ],
+    "sub": "",
+    "typ": "Bearer",
+    "azp": "",
+    "sid": "",
+    "acr": "1",
+    "scope": "openid email profile",
+    "email_verified": false,
+    "preferred_username": "",
+    "client_id": "",
+    "username": "",
+    "token_type": "Bearer",
+    "active": true
+}

@@ -1,0 +1,11 @@
+{
+    "username": "admin",
+    "firstName": "admin",
+    "lastName": "admin",
+    "email": "admin@test.com",
+    "enabled": true,
+    "credentials": {
+        "value": "test1234$",
+        "temporary": false
+    }
+}
