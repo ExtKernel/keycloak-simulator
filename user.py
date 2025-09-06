@@ -1,49 +1,42 @@
 import json
 
 from uuid import uuid4
-from datetime import datetime
 from flask import request, jsonify
-from utils import Logger
+from utils import (
+    Logger,
+    ConfigHandler,
+    UserCacheHandler,
+    get_epoch_mil_timestamp
+)
+from exception.exceptions import InvalidRealm, NoAdminUser
 
 logger = Logger('user')
 logger = logger.get_logger()
 
 
-def cache_user(user, cache):
-    cached_users = cache.get('users')
-    cached_users.append(user)
-
-    cache.delete('users')
-    cache.add('users', cached_users)
-
-def get_cached_user(user_id, cache):
-    cached_users = cache.get('users')
-
-    for user in cached_users:
-        if str(user.id) == user_id:
-            return user
-    raise KeyError(f'User with id {user_id} not found')
-
 class User:
-    def __init__ (self, *args, **kwargs):
+    def __init__ (self, **kwargs):
         self.id = uuid4()
-        self.createdTimestamp = int(datetime.now().timestamp() * 1000) # * 1000 - microseconds to milliseconds
-
+        self.createdTimestamp = get_epoch_mil_timestamp()
         # Minimal required args to build a Keycloak user
-        required_args = ['username', 'enabled', 'firstName', 'lastName', 'email']
+        required_args = ['username', 'firstName', 'lastName', 'email', 'enabled']
+        logger.info(f'Initializing a user\n'
+                    f'Required arguments: {required_args}\n'
+                    f'UID: {self.id}\nUNIX timestamp: {self.createdTimestamp}')
 
         # If no dict representation of a user was passed
         # Try to build it from individual args passed
         # Exception if neither worked
-        user_dict=None
         if 'user_dict' in kwargs:
             user_dict = kwargs['user_dict']
-        if set(required_args).issubset(set(user_dict.keys())):
-            for k, v in user_dict.items():
+            if set(required_args).issubset(set(user_dict.keys())):
+                for k, v in user_dict.items():
+                    setattr(self, k, v)
+                    logger.info(f'Successfully set \"{self.__class__.__name__}\" class attribute: \"{k}\" = \"{v}\"')
+        elif set(required_args).issubset(set(kwargs)):
+            for k, v in kwargs.items():
                 setattr(self, k, v)
-        elif required_args in args:
-            for arg in required_args:
-                setattr(self, arg, args.index(arg))
+                logger.info(f'Successfully set \"{self.__class__.__name__}\" class attribute: \"{k}\" = \"{v}\"')
         else:
             message = ('User object is missing required arguments.'
                        ' Valid arguments were not given nor was a valid dict representation.')
@@ -57,19 +50,36 @@ class User:
 
 class UserAPI:
     def __init__ (self, cache, config):
-        self.cache = cache
-        if cache.get('users') is None:
-            cache.add('users', [])
+        self.config_handler = ConfigHandler()
+        self.cache_handler = UserCacheHandler(cache)
         # Set config entries as attributes
         for k, v in config.items():
             setattr(self, k, v)
+            logger.info(f'Successfully set \"{self.__class__.__name__}\" class attribute: \"{k}\" = \"{v}\"')
 
     def validate_realm(self, request_realm):
         if request_realm != self.realm:
             message = f'Invalid realm. \"{request_realm}\" does not reflect the configured realm'
             logger.error(message)
-            raise ValueError(message)
+            raise InvalidRealm(message)
         return True
+
+    def init_admin(self):
+        template = self.config_handler.get_template(self.admin_user_template)
+        self.cache_handler.cache_user(User(user_dict=template))
+
+    def get_admin(self):
+        template = self.config_handler.get_template(self.admin_user_template)
+        template_admin_username = template['username']
+        for user in self.cache_handler.get_cached_users():
+            if user.username == template_admin_username:
+                return user
+            else:
+                message = (f'No Keycloak admin user with template-matching username '
+                           f'\"{template_admin_username}\" was initialized and/or cached')
+                logger.error(message)
+                raise NoAdminUser(message)
+
 
     def init_error_handlers(self, app):
         """
@@ -114,7 +124,7 @@ class UserAPI:
             # Try to build a user. If cannot, then request args are invalid
             try:
                 user = User(user_dict=dict(request.json))
-                cache_user(user, self.cache)
+                self.cache_handler.cache_user(user)
             except ValueError as exception:
                 return jsonify({
                     'error': 'invalid_request',
@@ -126,7 +136,7 @@ class UserAPI:
         def get_user(realm, user_id):
             self.validate_realm(realm)
 
-            user = get_cached_user(user_id, self.cache)
+            user = self.cache_handler.get_cached_user(user_id)
 
             template = json.loads(open(self.get_user_response_template).read())
             template['id'] = user.id
@@ -143,7 +153,7 @@ class UserAPI:
         def get_users(realm):
             self.validate_realm(realm)
 
-            return jsonify([user.__dict__ for user in self.cache.get('users')])
+            return jsonify([user.__dict__ for user in self.cache_handler.get_cached_users()])
 
         @app.route(self.reset_user_password_endpoint, methods=['PUT'])
         def reset_password(realm, user_id):
@@ -152,5 +162,7 @@ class UserAPI:
         @app.route(self.delete_user_endpoint, methods=['DELETE'])
         def delete_user(realm, user_id):
             self.validate_realm(realm)
-            return f'{user_id} User deleted!'
+            self.cache_handler.delete_cached_user(user_id)
+
+            return '', 200
 

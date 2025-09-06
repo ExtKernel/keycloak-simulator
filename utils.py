@@ -1,7 +1,22 @@
+import json
 import logging
 import configparser
 from pathlib import Path
 from datetime import datetime
+
+
+def get_epoch_mil_timestamp():
+    return int(datetime.now().timestamp() * 1000)  # * 1000 - microseconds to milliseconds
+
+class ConfigHandler:
+    def get_config(self, section, config_file):
+        config = configparser.ConfigParser()
+        config.read(config_file)
+
+        return dict(config.items(section))
+
+    def get_template(self, template):
+        return json.loads(open(template).read())
 
 
 class Logger:
@@ -12,7 +27,7 @@ class Logger:
         Path(log_dir).mkdir(parents=True, exist_ok=True)
 
     def get_formatter(self):
-        message_format = '[%(asctime)s] [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)'
+        message_format = '%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)'
         date_format = '%Y/%m/%d %H:%M:%S'
 
         return logging.Formatter(fmt=message_format, datefmt=date_format)
@@ -38,9 +53,73 @@ class Logger:
         return logger
 
 
-def get_config(config_file):
-    config = configparser.ConfigParser()
-    config.read(config_file)
+class CacheHandler:
+    def __init__(self, cache):
+        self.cache = cache
 
-    return dict(config.items('Keycloak'))
+    def get_cached_models(self, cache_name):
+        cached_models = self.cache.get(cache_name)
+        if cached_models is None:
+            cached_models = []
+            self.cache.add(cache_name, [])
+
+        return cached_models
+
+    def get_cached_model(self, relay_field, keyword, cache_name):
+        for model in self.get_cached_models(cache_name):
+            if str(getattr(model, relay_field)) == str(keyword):
+                return model
+
+        raise KeyError(f'Model with {keyword} value of {relay_field} field was not found')
+
+    def cache_model(self, cache_name, value):
+        cached_model = self.get_cached_models(cache_name)
+        cached_model.append(value)
+
+        self.cache.delete(cache_name)
+        self.cache.add(cache_name, cached_model)
+
+
+class AuthCacheHandler(CacheHandler):
+    def __init__(self, cache):
+        super().__init__(cache)
+        self.access_token_cache_name = 'access_tokens'
+
+    def get_cached_tokens(self):
+        return self.get_cached_models(self.access_token_cache_name)
+
+    def get_cached_token(self, access_token):
+        return self.get_cached_model('token', access_token, self.access_token_cache_name)
+
+    def cache_token(self, token):
+        self.cache_model(self.access_token_cache_name, token)
+
+
+class UserCacheHandler(CacheHandler):
+    def __init__(self, cache):
+        super().__init__(cache)
+        self.user_cache_name = 'users'
+
+    def get_cached_users(self):
+        return self.get_cached_models(self.user_cache_name)
+
+    def get_cached_user(self, user_id):
+        return self.get_cached_model('id', user_id, self.user_cache_name)
+
+    def cache_user(self, user):
+        self.cache_model(self.user_cache_name, user)
+
+    def cache_users(self, users):
+        self.cache.delete(self.user_cache_name)
+        self.cache.add(self.user_cache_name, users)
+
+    def delete_cached_user(self, user_id):
+        cached_users = self.get_cached_users()
+
+        for user in cached_users:
+            print(user)
+            if str(user.id) == user_id:
+                cached_users.remove(user)
+
+        self.cache_users(cached_users)
 

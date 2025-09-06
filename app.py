@@ -1,7 +1,7 @@
 from sys import argv
 from flask import Flask
 from flask_caching import Cache
-from utils import Logger, get_config
+from utils import Logger, ConfigHandler
 from user import UserAPI
 from auth import AuthAPI
 
@@ -17,11 +17,21 @@ if __name__ == "__main__":
         logger.error('Please specify a config file as a first positional argument.')
         exit(1)
 
-    # Initialize OAuth2-related endpoints
-    auth_api = AuthAPI(get_config(config))
-    auth_api.init_endpoints(app)
+    config_handler = ConfigHandler()
     # Initialize user-related endpoints
-    user_api = UserAPI(cache, get_config(config))
+    user_api = UserAPI(
+        cache,
+        config_handler.get_config('USER', config)
+    )
+    user_api.init_admin()
     user_api.init_endpoints(app)
+
+    # Initialize OAuth2-related endpoints
+    auth_api = AuthAPI(
+        cache,
+        config_handler.get_config('AUTH', config),
+        user_api.get_admin()
+    )
+    auth_api.init_endpoints(app)
 
     app.run(host='0.0.0.0')
