@@ -157,7 +157,23 @@ class UserAPI:
 
         @app.route(self.reset_user_password_endpoint, methods=['PUT'])
         def reset_password(realm, user_id):
-            return f'{user_id} User\'s password reset!'
+            self.validate_realm(realm)
+
+            user = self.cache_handler.get_cached_user(user_id)
+            request_credentials = json.loads(request.data)['credentials']
+
+            if user.check_credentials():
+                user.credentials['value'] = request_credentials['value']
+                user.credentials['temporary'] = request_credentials['temporary']
+
+                self.cache_handler.cache_user(user)
+            else:
+                user.credentials = {
+                    'value': request_credentials['value'],
+                    'temporary': request_credentials['temporary']
+                }
+
+            return '', 204
 
         @app.route(self.delete_user_endpoint, methods=['DELETE'])
         def delete_user(realm, user_id):

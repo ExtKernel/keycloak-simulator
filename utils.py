@@ -72,42 +72,64 @@ class CacheHandler:
 
         raise KeyError(f'Model with {keyword} value of {relay_field} field was not found')
 
-    def cache_model(self, cache_name, value):
-        cached_model = self.get_cached_models(cache_name)
-        cached_model.append(value)
+    def cache_model(self, relay_field, value, cache_name):
+        cached_models = self.get_cached_models(cache_name)
+        for model in cached_models:
+            if getattr(model, relay_field) == getattr(value, relay_field):
+                cached_models.remove(model)
+
+        cached_models.append(value)
 
         self.cache.delete(cache_name)
-        self.cache.add(cache_name, cached_model)
+        self.cache.add(cache_name, cached_models)
 
 
 class AuthCacheHandler(CacheHandler):
     def __init__(self, cache):
         super().__init__(cache)
+        self.relay_field = 'token'
         self.access_token_cache_name = 'access_tokens'
 
     def get_cached_tokens(self):
         return self.get_cached_models(self.access_token_cache_name)
 
     def get_cached_token(self, access_token):
-        return self.get_cached_model('token', access_token, self.access_token_cache_name)
+        return self.get_cached_model(
+            self.relay_field,
+            access_token,
+            self.access_token_cache_name
+        )
 
     def cache_token(self, token):
-        self.cache_model(self.access_token_cache_name, token)
+        self.cache_model(
+            self.relay_field,
+            token,
+            self.access_token_cache_name
+        )
 
 
 class UserCacheHandler(CacheHandler):
     def __init__(self, cache):
         super().__init__(cache)
+        self.relay_field = 'id'
         self.user_cache_name = 'users'
 
     def get_cached_users(self):
         return self.get_cached_models(self.user_cache_name)
 
     def get_cached_user(self, user_id):
-        return self.get_cached_model('id', user_id, self.user_cache_name)
+        return self.get_cached_model(
+            self.relay_field,
+            user_id,
+            self.user_cache_name
+        )
 
     def cache_user(self, user):
-        self.cache_model(self.user_cache_name, user)
+        self.cache_model(
+            self.relay_field,
+            user,
+            self.user_cache_name
+        )
 
     def cache_users(self, users):
         self.cache.delete(self.user_cache_name)
