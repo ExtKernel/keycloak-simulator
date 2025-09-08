@@ -1,0 +1,18 @@
+{
+    "id": "",
+    "name": "",
+    "description": "",
+    "path": "/",
+    "subGroupCount": 0,
+    "subGroups": [],
+    "attributes": {},
+    "realmRoles": [],
+    "clientRoles": {},
+    "access": {
+        "view": true,
+        "viewMembers": true,
+        "manageMembers": true,
+        "manage": true,
+        "manageMembership": true
+    }
+}

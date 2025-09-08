@@ -1,9 +1,12 @@
 from sys import argv
+
 from flask import Flask
 from flask_caching import Cache
-from utils import Logger, ConfigHandler
-from user import UserAPI
+
 from auth import AuthAPI
+from user import UserAPI
+from usergroup import UsergroupAPI
+from utils import Logger, ConfigHandler
 
 app = Flask(__name__)
 logger = Logger('flask')
@@ -25,6 +28,13 @@ if __name__ == "__main__":
     )
     user_api.init_admin()
     user_api.init_endpoints(app)
+
+    # Initialize usergroup-related endpoints
+    usergroup_api = UsergroupAPI(
+        cache,
+        config_handler.get_config('USERGROUP', config)
+    )
+    usergroup_api.init_endpoints(app)
 
     # Initialize OAuth2-related endpoints
     auth_api = AuthAPI(

@@ -1,8 +1,8 @@
+import configparser
 import json
 import logging
-import configparser
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 
 def get_epoch_mil_timestamp():
@@ -139,9 +139,44 @@ class UserCacheHandler(CacheHandler):
         cached_users = self.get_cached_users()
 
         for user in cached_users:
-            print(user)
-            if str(user.id) == user_id:
+            if str(getattr(user, self.relay_field)) == user_id:
                 cached_users.remove(user)
 
         self.cache_users(cached_users)
 
+
+class UsergroupCacheHandler(CacheHandler):
+    def __init__(self, cache):
+        super().__init__(cache)
+        self.relay_field = 'id'
+        self.usergroup_cache_name = 'usergroups'
+
+    def get_cached_usergroups(self):
+        return self.get_cached_models(self.usergroup_cache_name)
+
+    def get_cached_usergroup(self, usergroup_id):
+        return self.get_cached_model(
+            self.relay_field,
+            usergroup_id,
+            self.usergroup_cache_name
+        )
+
+    def cache_usergroup(self, usergroup):
+        self.cache_model(
+            self.relay_field,
+            usergroup,
+            self.usergroup_cache_name
+        )
+
+    def cache_usergroups(self, usergroups):
+        self.cache.delete(self.usergroup_cache_name)
+        self.cache.add(self.usergroup_cache_name, usergroups)
+
+    def delete_cached_usergroup(self, usergroup_id):
+        cached_usergroups = self.get_cached_usergroups()
+
+        for usergroup in cached_usergroups:
+            if str(getattr(usergroup, self.relay_field)) == usergroup_id:
+                cached_usergroups.remove(usergroup)
+
+        self.cache_usergroups(cached_usergroups)

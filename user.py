@@ -1,14 +1,16 @@
+import copy
 import json
-
 from uuid import uuid4
+
 from flask import request, jsonify
+
+from exception.exceptions import InvalidRealm, NoAdminUser
 from utils import (
     Logger,
     ConfigHandler,
     UserCacheHandler,
     get_epoch_mil_timestamp
 )
-from exception.exceptions import InvalidRealm, NoAdminUser
 
 logger = Logger('user')
 logger = logger.get_logger()
@@ -46,6 +48,13 @@ class User:
     def check_credentials(self):
         credentials_fields = ['value', 'temporary']
         return True if set(self.credentials.keys()) == set(credentials_fields) else False
+
+    def make_template(self, template):
+        for key in template.keys():
+            if key in self.__dict__.keys():
+                template[key] = getattr(self, key)
+
+        return template
 
 
 class UserAPI:
@@ -137,23 +146,20 @@ class UserAPI:
             self.validate_realm(realm)
 
             user = self.cache_handler.get_cached_user(user_id)
-
             template = json.loads(open(self.get_user_response_template).read())
-            template['id'] = user.id
-            template['username'] = user.username
-            template['firstName'] = user.firstName
-            template['lastName'] = user.lastName
-            template['email'] = user.email
-            template['createdTimestamp'] = user.createdTimestamp
-            template['enabled'] = user.enabled
 
-            return jsonify(template)
+            return jsonify(user.make_template(template))
 
         @app.route(self.get_users_endpoint, methods=['GET'])
         def get_users(realm):
             self.validate_realm(realm)
 
-            return jsonify([user.__dict__ for user in self.cache_handler.get_cached_users()])
+            template = json.loads(open(self.get_users_response_template).read())
+            users = []
+            for user in self.cache_handler.get_cached_users():
+                users.append(user.make_template(copy.deepcopy(template)))
+
+            return jsonify(users)
 
         @app.route(self.reset_user_password_endpoint, methods=['PUT'])
         def reset_password(realm, user_id):
@@ -178,6 +184,7 @@ class UserAPI:
         @app.route(self.delete_user_endpoint, methods=['DELETE'])
         def delete_user(realm, user_id):
             self.validate_realm(realm)
+
             self.cache_handler.delete_cached_user(user_id)
 
             return '', 200

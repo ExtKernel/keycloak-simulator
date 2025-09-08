@@ -1,14 +1,13 @@
-import json
 import random
 import string
-
 from uuid import uuid4
+
 from flask import jsonify, request
+
 from utils import (
     Logger,
     ConfigHandler,
     AuthCacheHandler,
-    UserCacheHandler,
     get_epoch_mil_timestamp
 )
 

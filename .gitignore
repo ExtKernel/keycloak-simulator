@@ -9,3 +9,8 @@ venv/
 logs
 logs/
 ./logs
+
+# Personal notes
+notes
+notes/
+./notes

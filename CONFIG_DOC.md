@@ -8,13 +8,13 @@ REALM=ISS
 # Keycloak master(default) realm
 # Sometimes they change it
 MASTER_REALM=master
-# OAuth2 endpoints
+# OAuth2.0 endpoints
 TOKEN_ENDPOINT=/realms/<realm>/protocol/openid-connect/token
 INTROSPECT_ENDPOINT=/realms/<realm>/protocol/openid-connect/token/introspect
 # Templates
-TOKEN_RESPONSE_TEMPLATE=/path/to/token_response_template.json
-INTROSPECT_RESPONSE_TEMPLATE=/path/to/introspect_response_template.json
-REALM_ROLES_TEMPLATE=/path/to/realm_roles.json
+TOKEN_RESPONSE_TEMPLATE=/path/to/templates/token/token_response_template.json
+INTROSPECT_RESPONSE_TEMPLATE=/path/to/templates/token/introspect_response_template.json
+REALM_ROLES_TEMPLATE=/path/to/templates/token/realm_roles.json
 
 [USER]
 REALM=ISS
@@ -25,9 +25,20 @@ GET_USERS_ENDPOINT=/admin/realms/<realm>/users
 RESET_USER_PASSWORD_ENDPOINT=/admin/realms/<realm>/users/<user_id>/reset-password
 DELETE_USER_ENDPOINT=/admin/realms/<realm>/users/<user_id>
 # Templates
-ADMIN_USER_TEMPLATE=/path/to/admin.json
-GET_USER_RESPONSE_TEMPLATE=/path/to/get_user_response_template.json
-GET_USERS_RESPONSE_TEMPLATE=/path/to/get_users_response_template.json
+ADMIN_USER_TEMPLATE=/path/to/templates/user/admin.json
+GET_USER_RESPONSE_TEMPLATE=/path/to/templates/user/get_user_response_template.json
+GET_USERS_RESPONSE_TEMPLATE=/path/to/templates/user/get_users_response_template.json
+
+[USERGROUP]
+REALM=ISS
+# Admin API endpoints
+CREATE_USERGROUP_ENDPOINT=/admin/realms/<realm>/groups
+GET_USERGROUP_ENDPOINT=/admin/realms/<realm>/groups/<usergroup_id>
+GET_USERGROUPS_ENDPOINT=/admin/realms/<realm>/groups
+DELETE_USERGROUP_ENDPOINT=/admin/realms/<realm>/groups/<usergroup_id>
+# Templates
+GET_USERGROUP_RESPONSE_TEMPLATE=/path/to/templates/usergroup/get_usergroup_response_template.json
+GET_USERGROUPS_RESPONSE_TEMPLATE=/path/to/templates/usergroup/get_usergroups_response_template.json
 ```
 `[AUTH]` and `[USERS]` - are mandatory names of the sections. In order to use different names,
 a change in [app.py](app.py) will be needed at the following lines: 
@@ -44,17 +55,22 @@ All the templates are present and preconfigured in this repository. **But not sp
 Please replace "/path/to" with actual paths to the templates.
 
 Empty strings or 0 integer values in the templates are meant to be filled during processing in the code or ignored.
-#### User templates
-- [ADMIN_USER_TEMPLATE](templates/user/admin.json) - An admin user will be created at the start of the simulator based on this template.
-Responses of requests on the corresponding endpoints will be defined based on the following templates:
-- [GET_USER_RESPONSE_TEMPLATE](templates/user/get_user_response_template.json)
-- [GET_USERS_ENDPOINT](templates/user/get_users_response_template.json)
 #### Auth templates
 Responses of requests on the corresponding endpoints will be defined based on the following templates:
 - [TOKEN_RESPONSE_TEMPLATE](templates/token/token_response_template.json)
 - [INTROSPECT_RESPONSE_TEMPLATE](templates/token/introspect_response_template.json)
 - [REALM_ROLES_TEMPLATE](templates/token/realm_roles.json) - Will be included in [INTROSPECT_RESPONSE_TEMPLATE](templates/token/introspect_response_template.json)
 during processing in the code.
+
+#### User templates
+- [ADMIN_USER_TEMPLATE](templates/user/admin.json) - An admin user will be created at the start of the simulator based on this template.
+Responses of requests on the corresponding endpoints will be defined based on the following templates:
+- [GET_USER_RESPONSE_TEMPLATE](templates/user/get_user_response_template.json)
+- [GET_USERS_ENDPOINT](templates/user/get_users_response_template.json)
+
+#### User group templates
+- [GET_USERGROUP_RESPONSE_TEMPLATE](templates/usergroup/get_usergroup_response_template.json)
+- [GET_USERGROUPS_RESPONSE_TEMPLATE](templates/usergroup/get_usergroups_response_template.json)
 ---
 ### Endpoint configuration
 The endpoint configuration exists to avoid hardcoded endpoints. 
