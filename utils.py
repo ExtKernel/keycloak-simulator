@@ -1,8 +1,11 @@
 import configparser
 import json
 import logging
+
 from datetime import datetime
 from pathlib import Path
+from flask import jsonify
+from exception.exceptions import InvalidRealm
 
 
 def get_epoch_mil_timestamp():
@@ -53,130 +56,32 @@ class Logger:
         return logger
 
 
-class CacheHandler:
-    def __init__(self, cache):
-        self.cache = cache
+class KeycloakAPI:
+    def __init__(self, logger, config):
+        for k, v in config.items():
+            setattr(self, k, v)
+            logger.info(f'Successfully set \"{self.__class__.__name__}\" class attribute: \"{k}\" = \"{v}\"')
 
-    def get_cached_models(self, cache_name):
-        cached_models = self.cache.get(cache_name)
-        if cached_models is None:
-            cached_models = []
-            self.cache.add(cache_name, [])
+    def validate_realm(self, request_realm):
+        if request_realm != self.realm:
+            raise InvalidRealm(f'Invalid realm. \"{request_realm}\" does not reflect the configured realm')
+        return True
 
-        return cached_models
+    def init_error_handlers(self, app):
+        """
+        Master function for initializing error handlers.
+        Supposed to be called before of initialization of endpoints
+        or be included in its logic.
 
-    def get_cached_model(self, relay_field, keyword, cache_name):
-        for model in self.get_cached_models(cache_name):
-            if str(getattr(model, relay_field)) == str(keyword):
-                return model
+        :param app: flask app.
+        :return: depends on the exception.
+        """
 
-        raise KeyError(f'Model with {keyword} value of {relay_field} field was not found')
+        @app.errorhandler(Exception)
+        def handle_exception(exception):
+            app.logger.error(exception, exc_info=True)
 
-    def cache_model(self, relay_field, value, cache_name):
-        cached_models = self.get_cached_models(cache_name)
-        for model in cached_models:
-            if getattr(model, relay_field) == getattr(value, relay_field):
-                cached_models.remove(model)
-
-        cached_models.append(value)
-
-        self.cache.delete(cache_name)
-        self.cache.add(cache_name, cached_models)
-
-
-class AuthCacheHandler(CacheHandler):
-    def __init__(self, cache):
-        super().__init__(cache)
-        self.relay_field = 'token'
-        self.access_token_cache_name = 'access_tokens'
-
-    def get_cached_tokens(self):
-        return self.get_cached_models(self.access_token_cache_name)
-
-    def get_cached_token(self, access_token):
-        return self.get_cached_model(
-            self.relay_field,
-            access_token,
-            self.access_token_cache_name
-        )
-
-    def cache_token(self, token):
-        self.cache_model(
-            self.relay_field,
-            token,
-            self.access_token_cache_name
-        )
-
-
-class UserCacheHandler(CacheHandler):
-    def __init__(self, cache):
-        super().__init__(cache)
-        self.relay_field = 'id'
-        self.user_cache_name = 'users'
-
-    def get_cached_users(self):
-        return self.get_cached_models(self.user_cache_name)
-
-    def get_cached_user(self, user_id):
-        return self.get_cached_model(
-            self.relay_field,
-            user_id,
-            self.user_cache_name
-        )
-
-    def cache_user(self, user):
-        self.cache_model(
-            self.relay_field,
-            user,
-            self.user_cache_name
-        )
-
-    def cache_users(self, users):
-        self.cache.delete(self.user_cache_name)
-        self.cache.add(self.user_cache_name, users)
-
-    def delete_cached_user(self, user_id):
-        cached_users = self.get_cached_users()
-
-        for user in cached_users:
-            if str(getattr(user, self.relay_field)) == user_id:
-                cached_users.remove(user)
-
-        self.cache_users(cached_users)
-
-
-class UsergroupCacheHandler(CacheHandler):
-    def __init__(self, cache):
-        super().__init__(cache)
-        self.relay_field = 'id'
-        self.usergroup_cache_name = 'usergroups'
-
-    def get_cached_usergroups(self):
-        return self.get_cached_models(self.usergroup_cache_name)
-
-    def get_cached_usergroup(self, usergroup_id):
-        return self.get_cached_model(
-            self.relay_field,
-            usergroup_id,
-            self.usergroup_cache_name
-        )
-
-    def cache_usergroup(self, usergroup):
-        self.cache_model(
-            self.relay_field,
-            usergroup,
-            self.usergroup_cache_name
-        )
-
-    def cache_usergroups(self, usergroups):
-        self.cache.delete(self.usergroup_cache_name)
-        self.cache.add(self.usergroup_cache_name, usergroups)
-
-    def delete_cached_usergroup(self, usergroup_id):
-        cached_usergroups = self.get_cached_usergroups()
-
-        for usergroup in cached_usergroups:
-            if str(getattr(usergroup, self.relay_field)) == usergroup_id:
-                cached_usergroups.remove(usergroup)
-
-        self.cache_usergroups(cached_usergroups)
+            return jsonify({
+                'exception': type(exception).__name__,
+                'message': str(exception)
+            }), 400

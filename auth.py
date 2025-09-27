@@ -1,15 +1,10 @@
 import random
 import string
+
 from uuid import uuid4
-
 from flask import jsonify, request
-
-from utils import (
-    Logger,
-    ConfigHandler,
-    AuthCacheHandler,
-    get_epoch_mil_timestamp
-)
+from utils import Logger, ConfigHandler, get_epoch_mil_timestamp, KeycloakAPI
+from cache import AuthCacheHandler
 
 logger = Logger('auth')
 logger = logger.get_logger()
@@ -31,27 +26,17 @@ class AccessToken:
         self.session_state = session_state
         self.issued_at = get_epoch_mil_timestamp()
 
-class AuthAPI:
+class AuthAPI(KeycloakAPI):
     def __init__(
             self,
             cache,
             config,
             admin_user
     ):
+        super().__init__(logger, config)
         self.admin_user = admin_user
         self.config_handler = ConfigHandler()
         self.cache_handler = AuthCacheHandler(cache)
-        # Set config entries as attributes
-        for k, v in config.items():
-            setattr(self, k, v)
-            logger.info(f'Successfully set \"{self.__class__.__name__}\" class attribute: \"{k}\" = \"{v}\"')
-
-    def validate_realm(self, request_realm):
-        if request_realm != self.realm:
-            message = f'Invalid realm. \"{request_realm}\" does not reflect the configured realm'
-            logger.error(message)
-            raise ValueError(message)
-        return True
 
     def set_instrospect_template_realm_roles(
             self,
@@ -64,6 +49,20 @@ class AuthAPI:
         return introspect_template
 
     def init_endpoints(self, app):
+        """
+        Master function for initializing OAuth2-related endpoints.
+
+        :param app: flask app.
+        :return: depends on the endpoint.
+        """
+        @app.route('/.well-known/openid-configuration/realms/ISS', methods=['GET'])
+        def get_openid_well_known():
+            return jsonify(self.config_handler.get_template(self.openid_well_known_response_template))
+
+        @app.route('/realms/ISS/protocol/openid-connect/certs', methods=['GET'])
+        def get_openid_certs():
+            return jsonify(self.config_handler.get_template(self.openid_certs_response_template))
+
         @app.route(self.token_endpoint, methods=['POST'])
         def get_token(realm):
             self.validate_realm(realm)

@@ -3,9 +3,8 @@ import json
 from uuid import uuid4
 
 from flask import request, jsonify
-
-from exception.exceptions import InvalidRealm
-from utils import Logger, UsergroupCacheHandler
+from utils import Logger, KeycloakAPI
+from cache import UsergroupCacheHandler
 
 logger = Logger('usergroup')
 logger = logger.get_logger()
@@ -13,27 +12,33 @@ logger = logger.get_logger()
 class Usergroup:
     def __init__(self, **kwargs):
         self.id = str(uuid4())
-        # Minimal required args to build a Keycloak user group
+
         required_args = ['name']
         logger.info(f'Initializing a usergroup\n'
                     f'Required arguments: {required_args}\n'
                     f'UID: {self.id}')
 
+        arguments_dict = None
         if 'usergroup_dict' in kwargs:
             usergroup_dict = kwargs['usergroup_dict']
             if set(required_args).issubset(set(usergroup_dict)):
-                for k, v in usergroup_dict.items():
-                    setattr(self, k, v)
-                    logger.info(f'Successfully set \"{self.__class__.__name__}\" class attribute: \"{k}\" = \"{v}\"')
+                arguments_dict = usergroup_dict
         elif set(required_args).issubset(set(kwargs)):
-            for k, v in kwargs.items():
-                setattr(self, k, v)
-                logger.info(f'Successfully set \"{self.__class__.__name__}\" class attribute: \"{k}\" = \"{v}\"')
+            arguments_dict = kwargs
         else:
-            message = ('Usergroup object is missing required arguments.'
+            message = (f'\"{self.__class__.__name__}\" object is missing required arguments.'
                        ' Valid arguments were not given nor was a valid dict representation.')
             logger.error(message)
             raise ValueError(message)
+
+        for k, v in arguments_dict.items():
+            setattr(self, k, v)
+            logger.info(f'Successfully set \"{self.__class__.__name__}\" class attribute: \"{k}\" = \"{v}\" dynamically')
+
+        # Set users to an empty list to avoid exceptions
+        # And redundant None-checking
+        if 'users' not in list(arguments_dict.keys()):
+            self.users = []
 
         self.path = f'/{self.name}'
 
@@ -45,39 +50,10 @@ class Usergroup:
         return template
 
 
-class UsergroupAPI:
+class UsergroupAPI(KeycloakAPI):
     def __init__(self, cache, config):
+        super().__init__(logger, config)
         self.cache_handler = UsergroupCacheHandler(cache)
-        # Set config entries as attributes
-        for k, v in config.items():
-            setattr(self, k, v)
-            logger.info(f'Successfully set \"{self.__class__.__name__}\" class attribute: \"{k}\" = \"{v}\"')
-
-    def validate_realm(self, request_realm):
-        if request_realm != self.realm:
-            message = f'Invalid realm. \"{request_realm}\" does not reflect the configured realm'
-            logger.error(message)
-            raise InvalidRealm(message)
-        return True
-
-    def init_error_handlers(self, app):
-        """
-        Master function for initializing error handlers.
-        Supposed to be called before of initialization of endpoints
-        or be included in its logic.
-
-        :param app: flask app.
-        :return: depends on the exception.
-        """
-
-        @app.errorhandler(Exception)
-        def handle_exception(exception):
-            app.logger.error(exception, exc_info=True)
-
-            return jsonify({
-                'exception': type(exception).__name__,
-                'message': str(exception)
-            }), 400
 
     def init_endpoints(self, app):
         """
@@ -91,14 +67,10 @@ class UsergroupAPI:
         @app.route(self.create_usergroup_endpoint, methods=['POST'])
         def create_usergroup(realm):
             self.validate_realm(realm)
-            try:
-                usergroup = Usergroup(usergroup_dict=dict(request.json))
-                self.cache_handler.cache_usergroup(usergroup)
-            except ValueError as exception:
-                return jsonify({
-                    'error': 'invalid_request',
-                    'error_description': str(exception)
-                }), 400
+
+            usergroup = Usergroup(usergroup_dict=dict(request.json))
+            self.cache_handler.cache_usergroup(usergroup)
+
             return '', 201
 
         @app.route(self.get_usergroup_endpoint, methods=['GET'])
