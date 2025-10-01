@@ -22,9 +22,8 @@ class User:
         self.createdTimestamp = get_epoch_mil_timestamp()
 
         required_args = ['username', 'firstName', 'lastName', 'email', 'enabled']
-        logger.info(f'Initializing a user\n'
-                    f'Required arguments: {required_args}\n'
-                    f'UID: {self.id}\nUNIX timestamp: {self.createdTimestamp}')
+        logger.info(f'Initializing a user with UID: {self.id}; UNIX timestamp: {self.createdTimestamp}')
+        logger.info(f'Required arguments to build \"{self.__class__.__name__}\": {required_args}')
 
         arguments_dict = None
         if 'user_dict' in kwargs:

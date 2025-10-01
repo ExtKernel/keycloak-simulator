@@ -14,9 +14,8 @@ class Usergroup:
         self.id = str(uuid4())
 
         required_args = ['name']
-        logger.info(f'Initializing a usergroup\n'
-                    f'Required arguments: {required_args}\n'
-                    f'UID: {self.id}')
+        logger.info(f'Initializing a usergroup with UID: {self.id}')
+        logger.info(f'Required arguments to build \"{self.__class__.__name__}\": {required_args}')
 
         arguments_dict = None
         if 'usergroup_dict' in kwargs:
@@ -92,6 +91,14 @@ class UsergroupAPI(KeycloakAPI):
                 usergroups.append(usergroup.make_template(copy.deepcopy(template)))
 
             return jsonify(usergroups)
+
+        @app.route(self.get_usergroup_members_endpoint, methods=['GET'])
+        def get_usergroup_members(realm, usergroup_id):
+            self.validate_realm(realm)
+
+            usergroup = self.cache_handler.get_cached_usergroup(usergroup_id)
+
+            return usergroup.users
 
         @app.route(self.delete_usergroup_endpoint, methods=['DELETE'])
         def delete_usergroup(realm, usergroup_id):

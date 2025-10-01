@@ -23,9 +23,8 @@ class Client:
         self.directAccessGrantsEnabled = True
 
         required_args = ['clientId']
-        logger.info(f'Initializing a client\n'
-                    f'Required arguments: {required_args}\n'
-                    f'UID: {self.id}')
+        logger.info(f'Initializing a client with UID: {self.id}')
+        logger.info(f'Required arguments to build \"{self.__class__.__name__}\": {required_args}')
 
         arguments_dict = None
         if 'client_dict' in kwargs:
