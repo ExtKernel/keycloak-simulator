@@ -23,6 +23,8 @@ User group-related Admin API requests:
 - Get all user groups
 - Delete user group by id
 
+Please refer to [development state doc](DEV_STATE.md) if anything is missing or fails to work as expected.
+
 ---
 ### Configuration
 Creating a config is mandatory.
